@@ -63,7 +63,7 @@ async function waitForTest(testId) {
 
 async function waitForAllTestsEnd() {
   // wait for all the tests to be completed
-  while (completedTestsAmount != runningTestsAmount) {
+  while (completedTestsAmount < runningTestsAmount) {
     await setTimeout(minDelay);
   }
 }
@@ -326,7 +326,7 @@ class CallerPlaywright extends BaseClass {
     async function waitForAllUpdates(self) {
       if (self.testrailConfigs.updateResultAfterEachCase) {
         let timeout = 0;
-        while (updatedTestsAmount != commonIds.length) {
+        while (updatedTestsAmount < commonIds.length) {
           if (timeout == allCasesUpdateTimeout) {
             logger.error(
               "There is a problem with the test execution." +
