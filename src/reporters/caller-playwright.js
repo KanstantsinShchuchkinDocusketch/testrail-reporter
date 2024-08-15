@@ -275,7 +275,7 @@ class CallerPlaywright extends BaseClass {
         comment,
         elapsed: self.utils._formatTime(result.duration) || "",
         defects: "",
-        version: "",
+        version: test.parent.project().use.name,
         attachments: getCaseAttachments(),
       };
       // update with steps data if needed
