@@ -342,6 +342,18 @@ class CallerPlaywright extends BaseClass {
       }
     }
 
+    async function mapFlakyResults(self) {
+      const testResultsSet = {};
+      for (let caseResult of testResults) {
+        if (testResultsSet[caseResult.case_id] === undefined) {
+          testResultsSet[caseResult.case_id] = caseResult.status_id
+        } else if (testResultsSet[caseResult.case_id] !== caseResult.status_id) {
+          caseResult.status_id = self.testrailConfigs.status['flaky'];
+          testResultsSet[caseResult.case_id] = self.testrailConfigs.status['flaky'];
+        }
+      }
+    }
+
     // need to wait for the onBegin hook to complete because onEnd hook
     // can be called before the onBegin hook is completed
     await waitForBegin();
@@ -352,6 +364,10 @@ class CallerPlaywright extends BaseClass {
     await waitForAllUpdates(this);
 
     logger.debug("onEnd\n\n");
+    
+    if (this.testrailConfigs.status.flaky !== undefined) {
+      await mapFlakyResults(this);
+    }
 
     if (
       this.testrailConfigs.testRailUpdateInterval == 0 &&
