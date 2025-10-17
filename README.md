@@ -37,21 +37,21 @@ The reporter supports the following features
 - Update the test run results in TestRail either after running all test cases or simultaneously.
 - You have an option to update the test results of the same test run which executed several times, by saving all history data. Or you can create a new test run for every execution.
 - If a test case fails, you can observe an error message in the comment field of the TestRail test result.
-- Supports screenshots and videos attachment to the test results for Playwright.
+- Supports screenshots and videos attachment to the test results for Playwright and only screenshots for Vitest.
 
 ## Installation
 
 To install [testrail-reporter](https://www.npmjs.com/package/@zealteam/testrail-reporter?activeTab=readme), use the following command:
 
 ```code
- npm install @zealteam/testrail-reporter
+ npm install @zealteam/testrail-reporter --save-dev
 ```
 
 ## TestRail Configuration
 
 You should Enable API and Enable session authentication for API from testrail settings(It can be enabled in the administration area in TestRail under Administration > Site Settings > API.)
 
-Also make sure that your TestRail project uses multiple test suites to manage cases. As of now we support only projects which uses suites.
+There are no specific requirements for the TestRail project, we support all three types.
 
 Create a `testrail.config.js` file in your project's root directory. Enter the following credentials in the file:
 
@@ -62,6 +62,7 @@ module.exports = {
     pass: "password",
     project_id: 1,
     suite_id: 1,
+    create_missing_cases: true,
     testRailUpdateInterval: 0,
     updateResultAfterEachCase: true,
     use_existing_run: {
@@ -99,6 +100,13 @@ module.exports = {
 - **`project_id and suite_id`**
 
     - Replace the values of project_id's and suite_id's with the corresponding values specific to your project..
+
+- **`create_missing_cases`** - Default is `false`
+
+    - If set to true, the reporter will collect test cases without TestRail case IDs in test title and create them in TestRail under given project and suite.
+        - After missing cases are created, the reporter will create/update `testrail_created_cases.json` file in the root directory of your project.
+            This file will contain the mapping of the test case title, TestRail case ID, section ID and suite ID.
+        - If the test case has a title that matches an existing test case in TestRail, the reporter will warn you about the existing case and will skip creating a new one.
 
 - **`testRailUpdateInterval`** - Default is `0` (seconds).
 
@@ -152,8 +160,7 @@ status: {
 
 Here is a quick GIF demonstrating how to configure your project.
 
-![alt text](static/images/reporter_installation_and_configuration.gif)
-
+![alt text](https://zealous-tech.github.io/testrail-reporter/reporter_installation_and_configuration.gif)
 
 ## Usage
 
@@ -289,6 +296,45 @@ Replace '@C123' with the actual test ID from TestRail.
 > **Test steps are not supported in Vitest.**
 
 
+##### Schreenshots
+Need to have configured provider to capture screenshots for failed test cases.
+
+For instance, if you want to capture a screenshot when a test fails,
+you should include the following configuration in your config file (e.g., `vitest.config.js` or `vite.config.js`):
+
+```javascript
+export default defineConfig({
+
+...
+
+    test: {
+        environment: 'jsdom',
+        browser: {
+            enabled: true,
+            // browser name is required
+            name: '<browser>', // chromium, firefox, webkit
+            provider: 'playwright', // or 'webdriverio'
+            screenshotFailures: true,
+            // screenshots will be saved in this directory
+            screenshotDirectory: '<path>',
+        },
+    },
+
+...
+
+});
+```
+
+NOTE: regardless your provider choice, you should install the corresponding provider package.
+
+For more details about the provider installation visit <a href="https://vitest.dev/guide/browser/#provider-installation" target="_blank">Vitest documentation</a>.
+
+Vitest provider configuration is available in <a href="https://vitest.dev/guide/browser/#provider-configuration" target="_blank">Vitest documentation</a>.
+
+Generated screenshots will be available in testrail run tests' attachments.
+
+
+
 ##### Run your tests
 
 ```code
@@ -341,7 +387,7 @@ vitest run
 
 ## Reporter Workflow
 
-![alt text](static/images/workflow.png)
+![alt text](https://zealous-tech.github.io/testrail-reporter/workflow.png)
 
 
 ## Comparison with TestRail CLI
@@ -359,9 +405,9 @@ Differences between testrail-reporter and TestRail CLI (The TestRail CLI is a co
 | Adding Comment to the Results                          | Supported                           | Supported     |
 | Creating New Run                                       | Supported                           | Supported     |
 | Updating Existing Run                                  | Supported                           | Supported     |
-| Attaching Screenshots or Logs                          | Support is Currently in Development | Supported     |
+| Attaching Screenshots or Logs                          | Supported                           | Supported     |
+| Adding New Case to Test Suite                          | Supported                           | Supported     |
 | Adding New Case to Existing Test Run                   | Support is Currently in Development | Supported     |
-| Adding New Case to Test Suite                          | Not supported                       | Supported     |
 
 ## Self testing
 
@@ -369,7 +415,7 @@ To test the reporter, you can use the following steps:
 
 1. clone the repository
 2. run `npm install` to install the dependencies
-3. navigate to the `frameworks` folder
+3. navigate to the `test` folder
 4. choose the framework you want to test with
 
 ##### Playwright testing
@@ -382,7 +428,13 @@ To test the reporter, you can use the following steps:
 6. run `npx playwright test` to run the tests
 
 ##### Vitest testing
-TBD
+
+1. navigate to the `vitest` folder
+2. run `npm install` to install the dependencies
+3. set your testrail configurations in the `testrail.config.js` file
+4. update the `vitest.config.ts` file if needed
+5. set log level in src/logger.js file to `debug` for more detailed logs
+6. run the tests using the appropriate script from the `package.json` file. For example `npm run e2eSmokeTests` or add your custom command
 
 
 ## License

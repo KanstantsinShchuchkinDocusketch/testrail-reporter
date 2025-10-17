@@ -1,4 +1,3 @@
-// const { blue, underline } = require("colorette");
 const Utils = require("../utils.js");
 const { setTimeout } = require("timers/promises");
 const BaseClass = require("../base").BaseClass;
@@ -12,6 +11,7 @@ global.need_to_stop = false;
 let files_count = 0;
 let paths_count = 0;
 let runId = 0;
+let createRunResponse;
 let removedCaseIds = [];
 let existingCaseIds = [];
 let suiteCaseIds = [];
@@ -36,9 +36,15 @@ class CallerVitest extends BaseClass {
   async onCollected(file) {
     const setRunId = async () => {
       runId = this.testrailConfigs.use_existing_run.id;
-      await this.tr_api.getRun(runId).then(() => {
-        logger.info("The runId is a valid test run id!!");
-      });
+      await this.tr_api
+        .getRun(runId)
+        .then(() => {
+          logger.info("The runId is a valid test run id!!");
+        })
+        .catch((error) => {
+          logger.error(error.message);
+          throw error.message;
+        });
       logger.info(
         `The Run started, utilizing an existing TestRail Run` +
           `with "${runId}" id.`
@@ -57,7 +63,7 @@ class CallerVitest extends BaseClass {
             `Failed to get test cases from project by` +
               `" ${configProjectId}" id` +
               ` and suite by "${configSuiteId}" id.` +
-              ` \nPlease check your TestRail configuration.`
+              ` \nPlease check your TestRail configuration.`,
           );
           logger.error(err);
           process.exit(1);
@@ -72,7 +78,7 @@ class CallerVitest extends BaseClass {
         if (this.needToCreateRun) {
           logger.warn(
             `The provided TestRail suite does not contain` +
-              ` the following case ids: [${removedCaseIds}]`
+              ` the following case ids: [${removedCaseIds}]`,
           );
         }
       }
@@ -80,12 +86,15 @@ class CallerVitest extends BaseClass {
 
     const addRunToTestRail = async () => {
       if (this.needToCreateRun) {
-        await this.addRunToTestRail(existingCaseIds)
-          .then(({ id }) => {
-            runId = id;
-            logger.info(`The Run created successfully with "${runId}" id.`);
-          })
-          .catch((err) => logger.error(err));
+        createRunResponse = await this.addRunToTestRail(existingCaseIds).catch(
+          (err) => {
+            logger.error(err.message);
+            throw err.message;
+          }
+        );
+        runId = createRunResponse.id;
+        this.runURL = createRunResponse.url;
+        this.logRunURL();
       }
     };
 
@@ -93,23 +102,25 @@ class CallerVitest extends BaseClass {
     files_count++;
     this.processStartList(file);
     if (files_count === paths_count) {
+      await this.addMissingCasesToTestSuite();
       if (this.testrailConfigs.use_existing_run.id !== 0) {
         await setRunId();
       } else {
         await getSuiteCaseIds();
         logger.debug("suiteCaseIds: ", suiteCaseIds);
         removedCaseIds = case_ids.filter(
-          (item) => !suiteCaseIds.includes(item)
+          (item) => !suiteCaseIds.includes(item),
         );
         logger.debug("removedCaseIds: ", removedCaseIds);
         existingCaseIds = case_ids.filter((item) =>
-          suiteCaseIds.includes(item)
+          suiteCaseIds.includes(item),
         );
         logger.debug("existingCaseIds: ", existingCaseIds);
+
         this.needToCreateRun = this.needNewRun(
           case_ids,
           existingCaseIds,
-          removedCaseIds
+          removedCaseIds,
         );
         informAboutMissingCases();
         await addRunToTestRail();
@@ -134,18 +145,25 @@ class CallerVitest extends BaseClass {
             ? `#Error message:#\n ${JSON.stringify(
                 element[1].errors[0].message,
                 null,
-                "\t"
+                "\t",
               )}\n`
             : "PASS";
-        const data = {
-          case_id: +case_id,
-          status_id,
-          comment,
-          elapsed: this.utils._formatTime(element[1].duration) || "",
-          defects: "",
-          version: "",
-        };
-        testResults.push(data);
+
+        case_id.forEach((item) => 
+        {
+            const data = 
+            {
+              case_id: item,
+              status_id,
+              comment,
+              elapsed: this.utils._formatTime(element[1].duration) || "",
+              defects: "",
+              version: "",
+              // add screenshot as attachment
+              attachments: [element[2].failScreenshotPath] || [],
+            };
+          testResults.push(data);
+        })
       }
     });
   }
@@ -159,8 +177,7 @@ class CallerVitest extends BaseClass {
       await this.updateTestRailResults(testResults, runId);
     }
     global.need_to_stop = true;
-    let runUrl = `${this.testrailConfigs.base_url}/index.php?/runs/view/${runId}`;
-    logger.info("TestRail Run URL:\n" + runUrl);
+    this.logRunURL();
   }
 
   processStartList(arr) {
@@ -168,9 +185,15 @@ class CallerVitest extends BaseClass {
       if (!element.name.match(/[@C][?\d]{1,8}$/gm) && element.tasks) {
         this.processStartList(element.tasks);
       } else {
-        const case_id = this.utils._formatTitle(element.name);
-        if (case_id != null) {
-          case_ids.push(parseInt(case_id[1]));
+        const case_id = this.utils._extractCaseIdsFromTitle(element.name);
+        if (case_id != null) 
+        {
+          case_id.forEach((item) => 
+          {             
+            case_ids.push(item) 
+          })
+        } else if (self.testrailConfigs.create_missing_cases) {
+          this.missingCasesTitles.push(element.name);
         }
         if (element.mode === "skip") {
           if (case_id && case_id[1]) {
@@ -187,7 +210,7 @@ class CallerVitest extends BaseClass {
           testResults.push(data);
         } else {
           if (case_id) {
-            startList[element.id] = +case_id[1];
+            startList[element.id] = case_id.map((id) => +id);
           }
         }
       }
