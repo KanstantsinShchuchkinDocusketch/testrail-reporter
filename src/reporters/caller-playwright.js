@@ -106,9 +106,10 @@ class CallerPlaywright extends BaseClass {
        * If the test cases are not found, the reporter will exit.
        * */
       let getCasesResponse = await self.tr_api
-        .getCases(self.testrailConfigs.project_id, {
-          suite_id: self.testrailConfigs.suite_id,
-        })
+        .getCases(
+          self.testrailConfigs.project_id,
+          self.testrailConfigs.suite_id,
+        )
         .catch((err) => {
           const configProjectId = self.testrailConfigs.project_id;
           const configSuiteId = self.testrailConfigs.suite_id;
@@ -175,8 +176,8 @@ class CallerPlaywright extends BaseClass {
             throw err;
           },
         );
-        runId = createRunResponse.id;
-        this.runURL = createRunResponse.url;
+        runId = createRunResponse;
+        this.runURL = `${this.testrailConfigs.base_url}/index.php?/runs/view/${createRunResponse}`;
         this.logRunURL();
       }
     }
@@ -240,7 +241,7 @@ class CallerPlaywright extends BaseClass {
             name: path.basename(attachment),
             value: fs.createReadStream(attachment),
           };
-          await self.tr_api.addAttachmentToResult(runTestId, payload);
+          await self.tr_api.addAttachmentToResult(runTestId, attachment);
         } catch (error) {
           logger.warn(`Error uploading attachment: ${error.message}`);
         }

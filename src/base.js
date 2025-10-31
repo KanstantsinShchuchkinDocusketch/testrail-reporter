@@ -51,7 +51,7 @@ class BaseClass {
     };
 
     this.tr_api = new TestRail({
-      domain: this.testrailConfigs.base_url,
+      domain: this.testrailConfigs.base_url.replace(/^https:\/\//, '').replace(/\/$/, ''),
       username: this.testrailConfigs.user,
       password: this.testrailConfigs.pass,
     });
@@ -167,11 +167,8 @@ class BaseClass {
               });
             });
         }
-        const res = {
-          results: result,
-        };
         await this.tr_api
-          .addResultsForCases(runId, res)
+          .addResultsForCases(runId, result)
           .then(async (apiRes) => {
             logger.info("Test result added to TestRail successfully!");
             await this.uploadAttachmentsToTestRail(result, apiRes);
