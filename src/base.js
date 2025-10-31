@@ -1,9 +1,16 @@
-const TestRail = require("@dlenroc/testrail");
+const TestRail = require("testrail-api-client").default;
 const schedule = require("node-schedule");
 const fs = require("fs");
 const path = require("path");
 const getLogger = require("./logger.js");
 const logger = getLogger();
+
+TestRail.prototype.getResultsForCases = function (runId) {
+    var _this = this;
+    return new Promise(function (resolve, reject) {
+        _this.handlePaginatedGetAxios("".concat(_this.uri, "/get_results_for_run/").concat(runId), "results", [], resolve, reject);
+    });
+};
 
 const DEFAULT_CONFIG_FILENAME = "testrail.config.js";
 const configPath = path.resolve(process.cwd(), DEFAULT_CONFIG_FILENAME);
@@ -44,7 +51,7 @@ class BaseClass {
     };
 
     this.tr_api = new TestRail({
-      host: this.testrailConfigs.base_url,
+      domain: this.testrailConfigs.base_url,
       username: this.testrailConfigs.user,
       password: this.testrailConfigs.pass,
     });
@@ -87,22 +94,17 @@ class BaseClass {
     const monthAbbreviation = monthNames[today.getMonth()];
     try {
       const response = await this.tr_api.addRun(
+        `${this.testrailConfigs.create_new_run.run_name}` +
+        ` ${today.getDate()}-${monthAbbreviation}` +
+        `-${today.getFullYear()}` +
+        ` ${today.toTimeString().split(" ")[0]}`,
+        "TestRail automatic reporter module",
         this.testrailConfigs.project_id,
-        {
-          suite_id: this.testrailConfigs.suite_id,
-          milestone_id:
-            this.testrailConfigs.create_new_run.milestone_id !== 0
+        this.testrailConfigs.suite_id,
+        case_ids,
+        this.testrailConfigs.create_new_run.milestone_id !== 0
               ? this.testrailConfigs.create_new_run.milestone_id
-              : undefined,
-          name:
-            `${this.testrailConfigs.create_new_run.run_name}` +
-            ` ${today.getDate()}-${monthAbbreviation}` +
-            `-${today.getFullYear()}` +
-            ` ${today.toTimeString().split(" ")[0]}`,
-          description: "TestRail automatic reporter module",
-          include_all: this.testrailConfigs.create_new_run.include_all,
-          case_ids: case_ids,
-        }
+          : undefined,
       );
       return response;
     } catch (error) {
@@ -123,9 +125,10 @@ class BaseClass {
     logger.info(`Adding run results(${testRailResults.length}) to TestRail`);
     let result;
     await this.tr_api
-      .getCases(this.testrailConfigs.project_id, {
-        suite_id: this.testrailConfigs.suite_id,
-      })
+      .getCases(
+        this.testrailConfigs.project_id,
+        this.testrailConfigs.suite_id,
+      )
       .then((tests) => {
         tests.forEach(({ id, custom_bug_ids }) => {
           expectedFailures[id] = !!custom_bug_ids;
@@ -150,7 +153,7 @@ class BaseClass {
       .then(async () => {
         if (this.testrailConfigs.use_existing_run.id != 0) {
           await this.tr_api
-            .getResultsForRun(this.testrailConfigs.use_existing_run.id)
+            .getResultsForCases(this.testrailConfigs.use_existing_run.id)
             .then((results) => {
               logger.debug("Results:\n", results);
               results.forEach((res) => {
@@ -201,7 +204,7 @@ class BaseClass {
             name: path.basename(attachment),
             value: fs.createReadStream(attachment),
           };
-          await this.tr_api.addAttachmentToResult(apiRes[i].id, payload);
+          await this.tr_api.addAttachmentToResult(apiRes[i].id, attachment);
         } catch (error) {
           logger.warn(`Error uploading attachment: ${error.message}`);
         }
@@ -252,9 +255,10 @@ class BaseClass {
   }
 
   async isCaseInSuite(title) {
-    let cases = await this.tr_api.getCases(this.testrailConfigs.project_id, {
-      suite_id: this.testrailConfigs.suite_id,
-    });
+    let cases = await this.tr_api.getCases(
+      this.testrailConfigs.project_id,
+      this.testrailConfigs.suite_id,
+    );
     let caseIds = cases.map((item) => item.id);
     let caseTitles = cases.map((item) => item.title);
     let caseIndex = caseTitles.indexOf(title);
