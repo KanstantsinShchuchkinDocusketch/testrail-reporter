@@ -38,23 +38,23 @@
   },
   "homepage": "https://github.com/zealous-tech/testrail-reporter#readme",
   "dependencies": {
-    "@playwright/test": "^1.40.1",
+    "@playwright/test": "^1.58.2",
     "log4js": "^6.9.1",
     "node-schedule": "^2.1.1",
-    "playwright": "^1.40.1",
+    "playwright": "^1.58.2",
     "testrail-api-client": "^1.0.37",
-    "vitest": "^3.0.5"
+    "vitest": "^4.1.2"
   },
   "devDependencies": {
-    "@types/node": "^20.12.11",
-    "@types/node-schedule": "^2.1.6",
-    "@typescript-eslint/eslint-plugin": "^7.0.1",
-    "@typescript-eslint/parser": "^7.0.1",
-    "eslint": "^8.56.0",
-    "eslint-plugin-react": "^7.35.0",
+    "@types/node": "^25.5.0",
+    "@types/node-schedule": "^2.1.8",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
+    "eslint": "^10.1.0",
+    "eslint-plugin-react": "^7.37.5",
     "path": "^0.12.7",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.4"
+    "typescript": "^6.0.2"
   },
   "publishConfig": {
     "access": "public"
