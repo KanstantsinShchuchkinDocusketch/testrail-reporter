@@ -42,7 +42,7 @@
     "log4js": "^6.9.1",
     "node-schedule": "^2.1.1",
     "playwright": "^1.59.1",
-    "testrail-api-client": "github:KanstantsinShchuchkinDocusketch/testrail-api-client#b8e2dd381475ceacd79f83a99c1c3ab46109f262",
+    "testrail-api-client": "github:KanstantsinShchuchkinDocusketch/testrail-api-client#b152b9c17c78b2f1e65ffd1cf47459c4a72cd689",
     "vitest": "^4.1.4"
   },
   "devDependencies": {
